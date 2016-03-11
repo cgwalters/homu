@@ -15,8 +15,8 @@ from itertools import chain
 from queue import Queue
 import os
 import subprocess
-from .git_helper import SSH_KEY_FILE
 import shlex
+import tempfile
 import sys
 
 STATUS_TO_PRIORITY = {
@@ -453,11 +453,6 @@ def create_merge(state, repo_cfg, branch, git_cfg):
 
         fpath = 'cache/{}/{}'.format(repo_cfg['owner'], repo_cfg['name'])
         url = 'git@github.com:{}/{}.git'.format(repo_cfg['owner'], repo_cfg['name'])
-
-        os.makedirs(os.path.dirname(SSH_KEY_FILE), exist_ok=True)
-        with open(SSH_KEY_FILE, 'w') as fp:
-            os.fchmod(os.fileno(fp), 0o600)
-            fp.write(git_cfg['ssh_key'])
 
         if not os.path.exists(fpath):
             utils.logged_call(['git', 'init', fpath])
@@ -1006,6 +1001,13 @@ def main():
 
     os.environ['GIT_SSH'] = os.path.join(os.path.dirname(__file__), 'git_helper.py')
     os.environ['GIT_EDITOR'] = 'cat'
+
+    tmp_ssh_key = None
+    if git_cfg['local_git']:
+        tmp_ssh_key = tempfile.NamedTemporaryFile(prefix='homu-sshkey')
+        tmp_ssh_key.write(git_cfg['ssh_key'].encode('utf-8'))
+        tmp_ssh_key.flush()
+        os.environ['HOMU_GIT_KEY_PATH'] = tmp_ssh_key.name
 
     from . import server
     Thread(target=server.start, args=[cfg, states, queue_handler, repo_cfgs, repos, logger, buildbot_slots, my_username, db, repo_labels, mergeable_que, gh]).start()

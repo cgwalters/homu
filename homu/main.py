@@ -456,8 +456,8 @@ def create_merge(state, repo_cfg, branch, git_cfg):
 
         os.makedirs(os.path.dirname(SSH_KEY_FILE), exist_ok=True)
         with open(SSH_KEY_FILE, 'w') as fp:
+            os.fchmod(os.fileno(fp), 0o600)
             fp.write(git_cfg['ssh_key'])
-        os.chmod(SSH_KEY_FILE, 0o600)
 
         if not os.path.exists(fpath):
             utils.logged_call(['git', 'init', fpath])

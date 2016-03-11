@@ -4,7 +4,7 @@ import sys
 import subprocess
 import os
 
-SSH_KEY_FILE = os.path.join(os.path.dirname(__file__), '../cache/key')
+SSH_KEY_FILE = os.path.join(os.getcwd(), 'sshkey')
 
 def main():
     args = ['ssh', '-i', SSH_KEY_FILE, '-S', 'none'] + sys.argv[1:]

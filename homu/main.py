@@ -15,8 +15,8 @@ from itertools import chain
 from queue import Queue
 import os
 import subprocess
-from .git_helper import SSH_KEY_FILE
 import shlex
+import tempfile
 
 STATUS_TO_PRIORITY = {
     'success': 0,
@@ -473,11 +473,6 @@ def create_merge(state, repo_cfg, branch, git_cfg):
         fpath = 'cache/{}/{}'.format(repo_cfg['owner'], repo_cfg['name'])
         url = 'git@github.com:{}/{}.git'.format(repo_cfg['owner'], repo_cfg['name'])
 
-        os.makedirs(os.path.dirname(SSH_KEY_FILE), exist_ok=True)
-        with open(SSH_KEY_FILE, 'w') as fp:
-            fp.write(git_cfg['ssh_key'])
-        os.chmod(SSH_KEY_FILE, 0o600)
-
         if not os.path.exists(fpath):
             utils.logged_call(['git', 'init', fpath])
             utils.logged_call(['git', '-C', fpath, 'remote', 'add', 'origin', url])
@@ -778,7 +773,8 @@ def fetch_mergeability(mergeable_que):
             mergeable_que.task_done()
 
 
-def check_timeout(states, queue_handler):
+def check_timeout(states, queue_handler, tmp_ssh_key):
+    # This function holds a reference to tmp_ssh_key to keep it alive
     while True:
         try:
             for repo_label, repo_states in states.items():
@@ -1049,11 +1045,18 @@ def main():
     os.environ['GIT_SSH'] = os.path.join(os.path.dirname(__file__), 'git_helper.py')
     os.environ['GIT_EDITOR'] = 'cat'
 
+    tmp_ssh_key = None
+    if git_cfg['local_git']:
+        tmp_ssh_key = tempfile.NamedTemporaryFile(prefix='homu-sshkey')
+        tmp_ssh_key.write(git_cfg['ssh_key'].encode('utf-8'))
+        tmp_ssh_key.flush()
+        os.environ['HOMU_GIT_KEY_PATH'] = tmp_ssh_key.name
+
     from . import server
     Thread(target=server.start, args=[cfg, states, queue_handler, repo_cfgs, repos, logger, buildbot_slots, my_username, db, repo_labels, mergeable_que, gh]).start()
 
     Thread(target=fetch_mergeability, args=[mergeable_que]).start()
-    Thread(target=check_timeout, args=[states, queue_handler]).start()
+    Thread(target=check_timeout, args=[states, queue_handler, tmp_ssh_key]).start()
 
     queue_handler()
 

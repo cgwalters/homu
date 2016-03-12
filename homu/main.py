@@ -739,7 +739,8 @@ def fetch_mergeability(mergeable_que):
         finally:
             mergeable_que.task_done()
 
-def check_timeout(states, queue_handler):
+def check_timeout(states, queue_handler, tmp_ssh_key):
+    # This function holds a reference to tmp_ssh_key to keep it alive
     while True:
         try:
             for repo_label, repo_states in states.items():
@@ -1013,7 +1014,7 @@ def main():
     Thread(target=server.start, args=[cfg, states, queue_handler, repo_cfgs, repos, logger, buildbot_slots, my_username, db, repo_labels, mergeable_que, gh]).start()
 
     Thread(target=fetch_mergeability, args=[mergeable_que]).start()
-    Thread(target=check_timeout, args=[states, queue_handler]).start()
+    Thread(target=check_timeout, args=[states, queue_handler, tmp_ssh_key]).start()
 
     queue_handler()
 

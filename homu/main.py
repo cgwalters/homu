@@ -214,7 +214,12 @@ class PullReqState:
         self.body = issue.body
 
     def fake_merge(self, repo_cfg):
-        if repo_cfg.get('linear', False) or repo_cfg.get('autosquash', False):
+        is_linear_or_autosquash = repo_cfg.get('linear', False) or repo_cfg.get('autosquash', False)
+        # Backwards compat, though I think this is a terrible default.
+        fake_merge = repo_cfg.get('linear_fake_merge', True)
+        if not is_linear_or_autosquash:
+            return
+        if fake_merge:
             msg = '''!!! Temporary commit !!!
 
 This commit is artifically made up to mark PR {} as merged.
@@ -238,6 +243,16 @@ auto-squashing.
                 self.get_issue().close()
 
             utils.retry_until(inner, fail, self)
+        else:
+            issue = self.get_issue()
+            title = issue.title
+            # So unfortunately, we can't yet tell github this PR was
+            # merged.  We need to rework things so that our last
+            # comment at least includes a link to the master commit.
+            merged_prefix = '[merged] '
+            if not title.startswith(merged_prefix):
+                title = merged_prefix + title
+            issue.edit(title=title, state='closed')
 
 def sha_cmp(short, full):
     return len(short) >= 4 and short == full[:len(short)]

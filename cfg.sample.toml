@@ -44,6 +44,13 @@ try_users = []
 # Auto-squash commits. Requires the local Git command
 #autosquash = true
 
+# Whether homu should push a temporary merge commit that causes
+# github to think the PR was merged.  You need to disable this if
+# you have branch protection enabled.  Also, leaving this enabled
+# means that other people pulling master might transiently see
+# the merge commit.
+#linear_fake_merge = true
+
 ## branch names (these settings here are the defaults)
 #[repo.NAME.branch]
 #
